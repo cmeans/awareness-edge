@@ -3,11 +3,11 @@
 > Collect. Evaluate. Report. The bridge between your systems and your AI assistant's awareness.
 
 > [!NOTE]
-> This project is under active development. It is the companion agent to [mcp-awareness](https://github.com/cmeans/mcp-awareness).
+> This project is under active development. It is the companion service to [mcp-awareness](https://github.com/cmeans/mcp-awareness).
 
 ## What it does
 
-`awareness-edge` is an MCP-to-MCP bridge agent. It polls data from source MCP servers (Synology NAS, Garmin, Home Assistant, etc.), uses a local LLM to evaluate whether anything needs attention, and writes status and alerts to the [mcp-awareness](https://github.com/cmeans/mcp-awareness) service.
+`awareness-edge` is a polling service that collects system metrics from source MCP servers (Synology NAS, Garmin, Home Assistant, etc.), evaluates them against configurable thresholds, and writes status and alerts to the [mcp-awareness](https://github.com/cmeans/mcp-awareness) service.
 
 The result: your AI assistant knows about your systems without you having to ask.
 
@@ -24,7 +24,7 @@ flowchart LR
     subgraph Edge["awareness-edge"]
         direction TB
         Collector["Collector\n(Python loop, 60s)"]
-        Evaluator["Evaluator\n(Ollama LLM)"]
+        Evaluator["Evaluator\n(thresholds)"]
         Collector --> Evaluator
     end
 
@@ -37,9 +37,9 @@ flowchart LR
     Evaluator -- "report_alert\n(when needed)" --> Store
 ```
 
-**Deterministic layer** (Python): authentication, scheduling, MCP connections, data collection, status reporting. Runs every cycle, never fails due to LLM issues.
+**Collection layer** (Python): scheduling, MCP connections, data collection, status reporting. Runs every cycle, deterministic, no external dependencies.
 
-**Evaluation layer** (Ollama): "Is anything here worth alerting about?" Classification task on structured metrics. Isolated, testable, model-swappable.
+**Evaluation layer** (thresholds): "Is anything here worth alerting about?" Configurable metric thresholds with pluggable evaluator interface for future extension.
 
 ## First source: Synology NAS
 
