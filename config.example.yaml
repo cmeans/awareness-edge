@@ -1,0 +1,39 @@
+# awareness-edge configuration
+# Copy to ~/.config/awareness-edge/config.yaml and customize.
+
+# Connection to the mcp-awareness server
+awareness:
+  url: "http://localhost:8300"
+  source: "awareness-edge"       # identifies this edge instance in awareness
+
+# Evaluator settings — decides whether metrics warrant an alert
+evaluator:
+  type: "threshold"              # threshold-based (default, extensible later)
+
+# Polling interval in seconds
+poll_interval_sec: 60
+
+# Logging level (DEBUG, INFO, WARNING, ERROR)
+logging_level: "INFO"
+
+# Data source providers
+providers:
+  # Demo provider — returns static fake metrics (useful for testing)
+  - name: demo
+    type: demo
+    enabled: true
+
+  # Synology NAS (uncomment when synology provider is implemented)
+  # - name: nas
+  #   type: synology
+  #   enabled: true
+  #   config:
+  #     host: "192.168.1.100"
+  #     port: 5001
+
+  # Garmin health data (uncomment when garmin provider is implemented)
+  # - name: garmin
+  #   type: garmin
+  #   enabled: true
+  #   config:
+  #     email: "user@example.com"
