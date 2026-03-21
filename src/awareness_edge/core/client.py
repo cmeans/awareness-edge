@@ -116,56 +116,96 @@ class AwarenessClient:
         data = self._extract_result(result)
         logger.debug("report_alert result: %s", data)
 
+    def _parse_list_result(self, data: Any) -> list[dict[str, Any]]:
+        """Parse a tool result that returns a JSON list."""
+        if isinstance(data, dict) and "result" in data:
+            raw = data["result"]
+            parsed = json.loads(raw) if isinstance(raw, str) else raw
+            return parsed if isinstance(parsed, list) else []
+        if isinstance(data, list):
+            return data
+        return []
+
+    async def _call_list_tool(self, tool: str, args: dict[str, Any]) -> list[dict[str, Any]]:
+        """Call a tool and parse the result as a list."""
+        session = await self._ensure_session()
+        try:
+            result = await session.call_tool(tool, args)
+            data = self._extract_result(result)
+            return self._parse_list_result(data)
+        except Exception:
+            logger.exception("Failed to call %s", tool)
+            return []
+
     async def get_knowledge(
         self,
         tags: list[str] | None = None,
         source: str | None = None,
+        entry_type: str | None = None,
     ) -> list[dict[str, Any]]:
         """Read knowledge entries from mcp-awareness."""
-        session = await self._ensure_session()
         args: dict[str, Any] = {}
         if tags is not None:
             args["tags"] = tags
         if source is not None:
             args["source"] = source
-
-        try:
-            result = await session.call_tool("get_knowledge", args)
-            data = self._extract_result(result)
-            if isinstance(data, dict) and "result" in data:
-                raw = data["result"]
-                parsed = json.loads(raw) if isinstance(raw, str) else raw
-                return parsed if isinstance(parsed, list) else []
-            if isinstance(data, list):
-                return data
-        except Exception:
-            logger.exception("Failed to get knowledge from awareness")
-
-        return []
+        if entry_type is not None:
+            args["entry_type"] = entry_type
+        return await self._call_list_tool("get_knowledge", args)
 
     async def get_status(
         self,
         source: str | None = None,
     ) -> list[dict[str, Any]]:
         """Read status entries from mcp-awareness."""
-        session = await self._ensure_session()
         args: dict[str, Any] = {}
         if source is not None:
             args["source"] = source
+        return await self._call_list_tool("get_status", args)
 
+    async def get_stats(self) -> dict[str, Any]:
+        """Get store statistics from mcp-awareness."""
+        session = await self._ensure_session()
         try:
-            result = await session.call_tool("get_status", args)
+            result = await session.call_tool("get_stats", {})
             data = self._extract_result(result)
-            if isinstance(data, dict) and "result" in data:
-                raw = data["result"]
-                parsed = json.loads(raw) if isinstance(raw, str) else raw
-                return parsed if isinstance(parsed, list) else []
-            if isinstance(data, list):
+            if isinstance(data, dict):
+                if "result" in data:
+                    raw = data["result"]
+                    return json.loads(raw) if isinstance(raw, str) else raw  # type: ignore[no-any-return]
                 return data
         except Exception:
-            logger.exception("Failed to get status from awareness")
+            logger.exception("Failed to get stats")
+        return {}
 
-        return []
+    async def get_tags(self) -> list[dict[str, Any]]:
+        """Get all tags with usage counts from mcp-awareness."""
+        return await self._call_list_tool("get_tags", {})
+
+    async def add_context(
+        self,
+        source: str,
+        tags: list[str],
+        description: str,
+        expires_days: int = 30,
+    ) -> dict[str, Any]:
+        """Add a time-limited context entry to mcp-awareness."""
+        session = await self._ensure_session()
+        try:
+            result = await session.call_tool(
+                "add_context",
+                {
+                    "source": source,
+                    "tags": tags,
+                    "description": description,
+                    "expires_days": expires_days,
+                },
+            )
+            data = self._extract_result(result)
+            return data if isinstance(data, dict) else {}
+        except Exception:
+            logger.exception("Failed to add context")
+            return {}
 
     async def close(self) -> None:
         """Close the MCP session and transport."""
