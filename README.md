@@ -14,27 +14,28 @@ The result: your AI assistant knows about your systems without you having to ask
 ## Architecture
 
 ```mermaid
-flowchart LR
+flowchart TD
     subgraph Sources["Source MCP Servers"]
-        S1["synology-mcp\n(NAS health)"]
-        S2["Garmin MCP\n(health/sleep)"]
-        S3["Home Assistant\n(devices/state)"]
+        direction LR
+        S1["synology-mcp"]
+        S2["Garmin MCP"]
+        S3["Home Assistant"]
     end
 
+    Sources --> Collector
+
     subgraph Edge["awareness-edge"]
-        direction TB
-        Collector["Collector\n(Python loop, 60s)"]
-        Evaluator["Evaluator\n(thresholds)"]
+        Collector["Collector · Python loop, 60s"]
+        Evaluator["Evaluator · thresholds"]
         Collector --> Evaluator
     end
+
+    Collector -- "report_status (always)" --> Store
+    Evaluator -. "report_alert (when needed)" .-> Store
 
     subgraph Awareness["mcp-awareness"]
         Store["Store + Collator"]
     end
-
-    Sources --> Collector
-    Collector -- "report_status\n(always)" --> Store
-    Evaluator -- "report_alert\n(when needed)" --> Store
 ```
 
 **Collection layer** (Python): scheduling, MCP connections, data collection, status reporting. Runs every cycle, deterministic, no external dependencies.
