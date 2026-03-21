@@ -8,6 +8,7 @@ import os
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING, Any
 
+import click
 import httpx
 
 from awareness_edge.sinks.base import BaseSink, SinkResult
@@ -59,6 +60,16 @@ class GitHubSink(BaseSink):
         if current_content == new_content:
             logger.debug("GitHub sink: content unchanged, skipping commit")
             return SinkResult(sink_name="github", items_pushed=0)
+
+        if self.dry_run:
+            click.echo(f"--- dry-run: {self.repo}/{self.path} ---", err=True)
+            click.echo(new_content, err=True)
+            click.echo("--- end dry-run ---", err=True)
+            return SinkResult(
+                sink_name="github",
+                items_pushed=len(entries),
+                details={"repo": self.repo, "path": self.path, "dry_run": True},
+            )
 
         await self._update_file(new_content, current_sha)
         return SinkResult(

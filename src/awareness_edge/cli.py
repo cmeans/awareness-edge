@@ -37,7 +37,13 @@ def main(ctx: click.Context) -> None:
     default=False,
     help="Run a single collection cycle and exit.",
 )
-def run(config_path: str | None, *, once: bool) -> None:
+@click.option(
+    "--dry-run",
+    is_flag=True,
+    default=False,
+    help="Show what would be done without writing to external systems.",
+)
+def run(config_path: str | None, *, once: bool, dry_run: bool) -> None:
     """Start the edge collection loop."""
     from awareness_edge.core.config import load_config
     from awareness_edge.core.scheduler import run_loop
@@ -48,7 +54,7 @@ def run(config_path: str | None, *, once: bool) -> None:
         format="%(asctime)s %(levelname)-8s %(name)s — %(message)s",
         stream=sys.stderr,
     )
-    asyncio.run(run_loop(config, once=once))
+    asyncio.run(run_loop(config, once=once, dry_run=dry_run))
 
 
 @main.command("check-config")

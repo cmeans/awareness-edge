@@ -57,7 +57,7 @@ def _build_evaluator(config: EdgeConfig) -> BaseEvaluator:
     return get_evaluator(config.evaluator.type)
 
 
-async def run_loop(config: EdgeConfig, *, once: bool = False) -> None:
+async def run_loop(config: EdgeConfig, *, once: bool = False, dry_run: bool = False) -> None:
     """Main polling loop.
 
     For each enabled provider: collect metrics, report status,
@@ -69,6 +69,11 @@ async def run_loop(config: EdgeConfig, *, once: bool = False) -> None:
     if not providers and not sinks:
         logger.warning("No providers or sinks configured — nothing to do")
         return
+
+    if dry_run:
+        for sink in sinks:
+            sink.dry_run = True
+        logger.info("Dry-run mode — no writes to external systems")
 
     evaluator = _build_evaluator(config)
     client = AwarenessClient(

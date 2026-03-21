@@ -14,6 +14,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **GitHub prompt sync sink** — reads awareness entries by tag, formats as markdown, commits to a configurable GitHub repo. Skips commits when content is unchanged.
 - **Real MCP client transport** — `AwarenessClient` now connects to mcp-awareness via streamable HTTP (MCP SDK). Replaces logging stubs with actual tool calls.
 - Awareness client read methods (`get_knowledge`, `get_status`) for sinks to query awareness
+- `--dry-run` flag on `run` command — sinks output what they would write to stderr without touching external systems
 - `check-config` now displays configured sinks
 
 ### Changed

@@ -28,6 +28,7 @@ class BaseSink(ABC):
 
     def __init__(self, config: dict[str, Any]) -> None:
         self.config = config
+        self.dry_run: bool = False
 
     @property
     @abstractmethod
