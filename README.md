@@ -50,9 +50,13 @@ Uses [synology-mcp](https://github.com/cmeans/synology-mcp) tools:
 
 The NAS is a seedbox — 80-90% disk I/O and high CPU from qBittorrent is normal. The evaluator focuses on structural changes (processes stopped, unexpected quiet) rather than high numbers.
 
+## Acknowledgements
+
+This project was designed and built collaboratively by [Chris Means](https://github.com/cmeans) and [Claude](https://claude.ai) (Anthropic's AI assistant). The initial architecture — a bidirectional bridge between source MCPs and the awareness store — was sketched out in conversation across Claude Android and Claude Code. Claude Code scaffolded the codebase, wrote the tests, and iterated on design decisions (like stripping Ollama in favor of deterministic thresholds) based on Chris's feedback. The [mcp-awareness](https://github.com/cmeans/mcp-awareness) knowledge store served as the shared context layer throughout, letting both platforms stay aligned on project state.
+
 ## License
 
-Apache 2.0
+Apache 2.0 — see [LICENSE](LICENSE) for details.
 
 ---
 

@@ -77,4 +77,8 @@ def check_config(config_path: str | None) -> None:
     for p in config.providers:
         status = "enabled" if p.enabled else "disabled"
         click.echo(f"  - {p.name} (type={p.type}, {status})")
+    click.echo(f"Sinks:          {len(config.sinks)}")
+    for s in config.sinks:
+        status = "enabled" if s.enabled else "disabled"
+        click.echo(f"  - {s.name} (type={s.type}, {status})")
     click.echo("Config OK.")

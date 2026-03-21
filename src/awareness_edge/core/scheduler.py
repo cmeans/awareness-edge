@@ -9,11 +9,13 @@ from typing import TYPE_CHECKING
 from awareness_edge.core.client import AwarenessClient
 from awareness_edge.evaluator import get_evaluator
 from awareness_edge.providers import get_provider
+from awareness_edge.sinks import get_sink
 
 if TYPE_CHECKING:
     from awareness_edge.core.config import EdgeConfig
     from awareness_edge.evaluator.base import BaseEvaluator
     from awareness_edge.providers.base import BaseProvider
+    from awareness_edge.sinks.base import BaseSink
 
 logger = logging.getLogger(__name__)
 
@@ -34,6 +36,22 @@ def _build_providers(config: EdgeConfig) -> list[BaseProvider]:
     return providers
 
 
+def _build_sinks(config: EdgeConfig) -> list[BaseSink]:
+    """Instantiate all enabled sinks from config."""
+    sinks: list[BaseSink] = []
+    for entry in config.sinks:
+        if not entry.enabled:
+            logger.debug("Sink %s is disabled, skipping", entry.name)
+            continue
+        try:
+            sink = get_sink(entry.type, entry.config)
+            sinks.append(sink)
+            logger.info("Loaded sink: %s (type=%s)", entry.name, entry.type)
+        except KeyError:
+            logger.error("Unknown sink type %r for %s — skipping", entry.type, entry.name)
+    return sinks
+
+
 def _build_evaluator(config: EdgeConfig) -> BaseEvaluator:
     """Instantiate the configured evaluator."""
     return get_evaluator(config.evaluator.type)
@@ -46,8 +64,10 @@ async def run_loop(config: EdgeConfig, *, once: bool = False) -> None:
     evaluate for alerts. Errors in one provider don't stop others.
     """
     providers = _build_providers(config)
-    if not providers:
-        logger.warning("No providers configured — nothing to do")
+    sinks = _build_sinks(config)
+
+    if not providers and not sinks:
+        logger.warning("No providers or sinks configured — nothing to do")
         return
 
     evaluator = _build_evaluator(config)
@@ -57,15 +77,16 @@ async def run_loop(config: EdgeConfig, *, once: bool = False) -> None:
     )
 
     logger.info(
-        "Starting edge loop: %d provider(s), evaluator=%s, interval=%ds",
+        "Starting edge loop: %d provider(s), %d sink(s), evaluator=%s, interval=%ds",
         len(providers),
+        len(sinks),
         config.evaluator.type,
         config.poll_interval_sec,
     )
 
     try:
         while True:
-            await _run_cycle(providers, evaluator, client)
+            await _run_cycle(providers, sinks, evaluator, client)
             if once:
                 break
             await asyncio.sleep(config.poll_interval_sec)
@@ -75,10 +96,12 @@ async def run_loop(config: EdgeConfig, *, once: bool = False) -> None:
 
 async def _run_cycle(
     providers: list[BaseProvider],
+    sinks: list[BaseSink],
     evaluator: BaseEvaluator,
     client: AwarenessClient,
 ) -> None:
-    """Execute one collection+evaluation cycle across all providers."""
+    """Execute one collection+evaluation+sink cycle."""
+    # Phase 1: Inbound — collect from providers, evaluate, report
     for provider in providers:
         try:
             result = await provider.collect()
@@ -104,3 +127,13 @@ async def _run_cycle(
 
         except Exception:
             logger.exception("Error collecting from provider %s", provider.source_name)
+
+    # Phase 2: Outbound — push from awareness to external systems
+    for sink in sinks:
+        try:
+            sink_result = await sink.push(client)
+            logger.info(
+                "Sink %s pushed %d item(s)", sink_result.sink_name, sink_result.items_pushed
+            )
+        except Exception:
+            logger.exception("Error in sink %s", sink.sink_name)

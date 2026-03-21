@@ -71,6 +71,25 @@ class AwarenessClient:
             message,
         )
 
+    async def get_knowledge(
+        self,
+        tags: list[str] | None = None,
+        source: str | None = None,
+    ) -> list[dict[str, Any]]:
+        """Read knowledge entries from mcp-awareness."""
+        # TODO: Wire to real MCP tool call transport (SSE/streamable-http)
+        logger.info("get_knowledge: tags=%s source=%s", tags, source)
+        return []
+
+    async def get_status(
+        self,
+        source: str | None = None,
+    ) -> list[dict[str, Any]]:
+        """Read status entries from mcp-awareness."""
+        # TODO: Wire to real MCP tool call transport (SSE/streamable-http)
+        logger.info("get_status: source=%s", source)
+        return []
+
     async def close(self) -> None:
         """Close the underlying HTTP client."""
         if self._client and not self._client.is_closed:

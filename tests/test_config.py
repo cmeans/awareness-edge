@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import pytest
 
-from awareness_edge.core.config import EdgeConfig, ProviderEntry
+from awareness_edge.core.config import EdgeConfig, ProviderEntry, SinkEntry
 
 
 def test_default_config() -> None:
@@ -33,3 +33,17 @@ def test_config_validation_bad_evaluator() -> None:
 def test_config_evaluator_default() -> None:
     config = EdgeConfig()
     assert config.evaluator.type == "threshold"
+
+
+def test_config_with_sink() -> None:
+    config = EdgeConfig(
+        sinks=[SinkEntry(name="test-sink", type="demo")],
+    )
+    assert len(config.sinks) == 1
+    assert config.sinks[0].name == "test-sink"
+    assert config.sinks[0].enabled is True
+
+
+def test_config_default_no_sinks() -> None:
+    config = EdgeConfig()
+    assert config.sinks == []

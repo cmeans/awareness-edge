@@ -37,3 +37,19 @@ providers:
   #   enabled: true
   #   config:
   #     email: "user@example.com"
+
+# Outbound sinks — read from awareness, push to external systems
+sinks:
+  # Demo sink — logs what it would push (useful for testing)
+  # - name: demo
+  #   type: demo
+  #   enabled: true
+
+  # GitHub prompt sync (uncomment when github sink is implemented)
+  # - name: prompt-sync
+  #   type: github
+  #   enabled: true
+  #   config:
+  #     repo: "cmeans/mcp-awareness"
+  #     file: "docs/memory-prompts.md"
+  #     tags: ["prompt"]

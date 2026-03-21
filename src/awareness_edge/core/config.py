@@ -33,6 +33,15 @@ class ProviderEntry(BaseModel):
     config: dict[str, Any] = {}
 
 
+class SinkEntry(BaseModel):
+    """A single sink (outbound provider) definition in the config file."""
+
+    name: str
+    type: str
+    enabled: bool = True
+    config: dict[str, Any] = {}
+
+
 class EvaluatorConfig(BaseModel):
     """Evaluator selection and settings."""
 
@@ -45,6 +54,7 @@ class EdgeConfig(BaseModel):
     awareness: AwarenessConfig = AwarenessConfig()
     evaluator: EvaluatorConfig = EvaluatorConfig()
     providers: list[ProviderEntry] = []
+    sinks: list[SinkEntry] = []
     poll_interval_sec: int = 60
     logging_level: str = "INFO"
 

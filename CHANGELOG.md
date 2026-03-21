@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Outbound sink framework — `BaseSink` ABC, separate registry, `sinks:` config section
+- Demo sink for testing the outbound pipeline
+- Awareness client read methods (`get_knowledge`, `get_status`) for sinks to query awareness
+- `check-config` now displays configured sinks
+
 ## [0.1.0] - 2026-03-21
 
 ### Added

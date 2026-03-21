@@ -26,3 +26,9 @@ def test_import_evaluators() -> None:
     from awareness_edge.evaluator import get_evaluator
 
     assert callable(get_evaluator)
+
+
+def test_import_sinks() -> None:
+    from awareness_edge.sinks import get_sink
+
+    assert callable(get_sink)
