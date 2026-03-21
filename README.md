@@ -58,6 +58,16 @@ flowchart TD
 
 **Sinks** (outbound): read from awareness, push to external targets. Each sink queries for exactly the data it needs.
 
+## Providers & Sinks
+
+| Component | Type | Status | Docs |
+|-----------|------|--------|------|
+| Demo provider | provider | built-in | [docs/providers/demo.md](docs/providers/demo.md) |
+| Demo sink | sink | built-in | [docs/sinks/demo.md](docs/sinks/demo.md) |
+| GitHub prompt sync | sink | built-in | [docs/sinks/github.md](docs/sinks/github.md) |
+| Synology NAS | provider | planned | — |
+| Garmin health | provider | planned | — |
+
 ## First source: Synology NAS
 
 Uses [synology-mcp](https://github.com/cmeans/synology-mcp) tools:
