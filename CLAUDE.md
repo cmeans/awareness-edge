@@ -4,27 +4,64 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Repository Purpose
 
-**awareness-edge** — an MCP-to-MCP bridge agent that collects system data from source MCP servers (synology-mcp, Garmin, Home Assistant, etc.), evaluates it using a local LLM (Ollama), and writes status/alerts to the mcp-awareness service.
+**awareness-edge** — a bidirectional polling service that bridges source MCP servers and the [mcp-awareness](https://github.com/cmeans/mcp-awareness) knowledge store.
 
-Companion to [cmeans/mcp-awareness](https://github.com/cmeans/mcp-awareness) (the generic awareness store + collation server).
+- **Inbound** (providers): collect metrics from source MCPs (Synology, Garmin, Home Assistant), evaluate against thresholds, report status/alerts to awareness
+- **Outbound** (sinks): read from awareness, push to external systems (GitHub, Slack, Notion)
 
 ## Architecture
 
-Hybrid: deterministic Python loop for reliability, local LLM (Ollama) for evaluation.
+Deterministic Python loop — no LLM dependency.
 
 ```
-every 60 seconds (Python, no LLM):
-  1. Authenticate to source MCPs
-  2. Call source tools (get_resource_usage, get_system_info, etc.)
-  3. Call mcp-awareness:report_status with raw metrics
+every 60 seconds:
+  Phase 1 — Inbound (providers):
+    1. Call source MCP tools (get_resource_usage, get_system_info, etc.)
+    2. report_status to mcp-awareness with raw metrics
+    3. Evaluate metrics against thresholds
+    4. If threshold exceeded → report_alert
 
-when evaluating (LLM via Ollama):
-  4. Pass metrics + context to local model
-  5. "Is this worth alerting about?" → classification task
-  6. If yes → mcp-awareness:report_alert
+  Phase 2 — Outbound (sinks):
+    5. Read from mcp-awareness (get_knowledge, get_status)
+    6. Push to external targets (GitHub, Slack, etc.)
 ```
 
-The LLM evaluation step is isolated — testable independently with saved snapshots, swappable models, fallback to threshold logic if model is unreliable.
+Per-provider and per-sink error isolation — one failure doesn't stop others.
+
+## Project Structure
+
+```
+src/awareness_edge/
+├── __init__.py          # version from importlib.metadata
+├── __main__.py          # python -m entry point
+├── cli.py               # Click CLI: run, check-config
+├── core/
+│   ├── config.py        # Pydantic models, YAML + env var loader
+│   ├── client.py        # Awareness MCP client (report + read, transport stubbed)
+│   └── scheduler.py     # Async polling loop
+├── evaluator/
+│   ├── base.py          # BaseEvaluator ABC
+│   └── threshold.py     # ThresholdEvaluator (default)
+├── providers/
+│   ├── base.py          # BaseProvider ABC + CollectionResult
+│   ├── demo.py          # Static fake metrics for testing
+│   └── __init__.py      # Provider registry
+└── sinks/
+    ├── base.py          # BaseSink ABC + SinkResult
+    ├── demo.py          # Logging no-op for testing
+    └── __init__.py      # Sink registry
+```
+
+## Build & Test
+
+```bash
+uv sync --extra dev          # install deps
+uv run ruff check src/ tests/    # lint
+uv run ruff format --check src/ tests/  # format check
+uv run mypy src/             # type check (strict)
+uv run pytest -v             # run tests
+uv run awareness-edge --version  # verify CLI
+```
 
 ## Related Repos
 
@@ -33,10 +70,9 @@ The LLM evaluation step is isolated — testable independently with saved snapsh
 
 ## Key Constraints
 
-- Python script handles auth, scheduling, MCP connections — never depends on LLM for plumbing
-- LLM handles evaluation only (classification, not orchestration)
-- Model failures should default to no-alert, log the failure
-- First source: synology-mcp (get_resource_usage, get_system_info)
-- LLM: Ollama, starting with llama3.1:8b — will iterate on model selection
-- Token efficiency: minimize what gets sent to the LLM evaluator
-- Data privacy: system metrics transit to local Ollama only, never to cloud LLM providers
+- Deterministic Python loop — no LLM dependencies
+- Threshold evaluator for alerting (evaluator interface is pluggable for future extension)
+- Evaluator failures default to no-alert, log the failure
+- Per-provider and per-sink error isolation
+- Awareness client transport is stubbed (logs calls) — wire SSE/streamable-http when first real integration lands
+- First planned sources: Synology NAS (get_resource_usage, get_system_info), Garmin health data

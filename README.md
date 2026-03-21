@@ -7,7 +7,10 @@
 
 ## What it does
 
-`awareness-edge` is a polling service that collects system metrics from source MCP servers (Synology NAS, Garmin, Home Assistant, etc.), evaluates them against configurable thresholds, and writes status and alerts to the [mcp-awareness](https://github.com/cmeans/mcp-awareness) service.
+`awareness-edge` is a bidirectional polling service that bridges source systems and the [mcp-awareness](https://github.com/cmeans/mcp-awareness) knowledge store.
+
+- **Inbound** (providers): collect metrics from source MCP servers (Synology NAS, Garmin, Home Assistant), evaluate against thresholds, report status and alerts
+- **Outbound** (sinks): read from awareness, push to external systems (GitHub, Slack, Notion)
 
 The result: your AI assistant knows about your systems without you having to ask.
 
@@ -22,25 +25,38 @@ flowchart TD
         S3["Home Assistant"]
     end
 
-    Sources --> Collector
+    Sources --> Providers
 
     subgraph Edge["awareness-edge"]
-        Collector["Collector · Python loop, 60s"]
+        Providers["Providers · collect"]
         Evaluator["Evaluator · thresholds"]
-        Collector --> Evaluator
+        Sinks["Sinks · push"]
+        Providers --> Evaluator
     end
 
-    Collector -- "report_status (always)" --> Store
+    Providers -- "report_status (always)" --> Store
     Evaluator -. "report_alert (when needed)" .-> Store
+    Store -- "get_knowledge / get_status" --> Sinks
+
+    Sinks --> Targets
 
     subgraph Awareness["mcp-awareness"]
         Store["Store + Collator"]
     end
+
+    subgraph Targets["External Systems"]
+        direction LR
+        T1["GitHub"]
+        T2["Slack"]
+        T3["Notion"]
+    end
 ```
 
-**Collection layer** (Python): scheduling, MCP connections, data collection, status reporting. Runs every cycle, deterministic, no external dependencies.
+**Providers** (inbound): collect metrics from source MCPs, report status every cycle. Deterministic, no external dependencies.
 
-**Evaluation layer** (thresholds): "Is anything here worth alerting about?" Configurable metric thresholds with pluggable evaluator interface for future extension.
+**Evaluator** (thresholds): "Is anything here worth alerting about?" Configurable metric thresholds with pluggable interface for future extension.
+
+**Sinks** (outbound): read from awareness, push to external targets. Each sink queries for exactly the data it needs.
 
 ## First source: Synology NAS
 
