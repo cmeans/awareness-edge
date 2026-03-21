@@ -6,6 +6,7 @@ from typing import Any
 
 from awareness_edge.sinks.base import BaseSink, SinkResult
 from awareness_edge.sinks.demo import DemoSink
+from awareness_edge.sinks.github import GitHubSink
 
 __all__ = ["BaseSink", "SinkResult", "get_sink", "register_sink"]
 
@@ -29,3 +30,4 @@ def get_sink(name: str, config: dict[str, Any] | None = None) -> BaseSink:
 
 # Built-in sinks
 register_sink("demo", DemoSink)
+register_sink("github", GitHubSink)

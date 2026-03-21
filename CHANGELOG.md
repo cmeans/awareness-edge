@@ -11,8 +11,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Outbound sink framework — `BaseSink` ABC, separate registry, `sinks:` config section
 - Demo sink for testing the outbound pipeline
+- **GitHub prompt sync sink** — reads awareness entries by tag, formats as markdown, commits to a configurable GitHub repo. Skips commits when content is unchanged.
+- **Real MCP client transport** — `AwarenessClient` now connects to mcp-awareness via streamable HTTP (MCP SDK). Replaces logging stubs with actual tool calls.
 - Awareness client read methods (`get_knowledge`, `get_status`) for sinks to query awareness
 - `check-config` now displays configured sinks
+
+### Changed
+
+- Default awareness URL updated to `http://localhost:8420` (matches mcp-awareness default port)
+- Added `mcp[cli]>=1.0.0` as a dependency
 
 ## [0.1.0] - 2026-03-21
 

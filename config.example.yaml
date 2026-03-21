@@ -3,7 +3,7 @@
 
 # Connection to the mcp-awareness server
 awareness:
-  url: "http://localhost:8300"
+  url: "http://localhost:8420"
   source: "awareness-edge"       # identifies this edge instance in awareness
 
 # Evaluator settings — decides whether metrics warrant an alert

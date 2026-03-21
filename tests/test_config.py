@@ -9,7 +9,7 @@ from awareness_edge.core.config import EdgeConfig, ProviderEntry, SinkEntry
 
 def test_default_config() -> None:
     config = EdgeConfig()
-    assert config.awareness.url == "http://localhost:8300"
+    assert config.awareness.url == "http://localhost:8420"
     assert config.awareness.source == "awareness-edge"
     assert config.evaluator.type == "threshold"
     assert config.poll_interval_sec == 60

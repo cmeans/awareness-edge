@@ -20,7 +20,7 @@ ENV_PREFIX = "AWARENESS_EDGE_"
 class AwarenessConfig(BaseModel):
     """Connection settings for the mcp-awareness server."""
 
-    url: str = "http://localhost:8300"
+    url: str = "http://localhost:8420"
     source: str = "awareness-edge"
 
 
