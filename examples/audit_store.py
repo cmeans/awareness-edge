@@ -105,14 +105,21 @@ def _tags_similar(a: str, b: str) -> bool:
     """Check if two tags are suspiciously similar."""
     if a == b:
         return False
-    # One is a substring of the other
-    if (a in b or b in a) and len(a) >= 4 and len(b) >= 4:
-        return True
-    # Simple plural check
+    # Simple plural check (project/projects, skill/skills)
     if a + "s" == b or b + "s" == a:
         return True
-    # Edit distance ≤ 2 for tags of reasonable length
-    return len(a) >= 4 and len(b) >= 4 and _edit_distance(a, b) <= 2
+    # One is an exact suffix of the other with a hyphen separator
+    # (e.g., sleep/deep-sleep, cycling/indoor-cycling)
+    # These are intentional sub-tags — skip them
+    if a.endswith(f"-{b}") or b.endswith(f"-{a}"):
+        return False
+    # One is a substring AND shares at least 5 chars AND the longer
+    # tag starts with the shorter (prefix match, not arbitrary substring)
+    if len(a) >= 5 and len(b) >= 5:
+        shorter, longer = (a, b) if len(a) <= len(b) else (b, a)
+        if longer.startswith(shorter):
+            return True
+    return False
 
 
 def _edit_distance(a: str, b: str) -> int:
@@ -217,19 +224,23 @@ def check_low_quality(entries: list[dict[str, object]]) -> list[Finding]:
 
 
 def check_tag_outliers(tags: list[dict[str, object]]) -> list[Finding]:
-    """Flag tags used only once (potential typos)."""
-    findings: list[Finding] = []
-    for t in tags:
-        tag = t.get("tag", "")
-        count = t.get("count", 0)
-        if isinstance(count, int) and count == 1 and isinstance(tag, str):
-            findings.append(
-                Finding(
-                    category="Singleton Tags",
-                    message=f"`{tag}` — used only once, may be a typo",
-                )
-            )
-    return findings
+    """Summarize tags used only once (may indicate low-value tags)."""
+    singletons = [
+        str(t["tag"])
+        for t in tags
+        if isinstance(t.get("count"), int) and t["count"] == 1 and isinstance(t.get("tag"), str)
+    ]
+    if not singletons:
+        return []
+    # Report as a single finding with count, not one per tag
+    tag_list = ", ".join(f"`{t}`" for t in sorted(singletons)[:20])
+    suffix = f" ... and {len(singletons) - 20} more" if len(singletons) > 20 else ""
+    return [
+        Finding(
+            category="Singleton Tags",
+            message=f"{len(singletons)} tags used only once: {tag_list}{suffix}",
+        )
+    ]
 
 
 # --- Report formatting ---

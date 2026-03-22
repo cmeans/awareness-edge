@@ -17,15 +17,14 @@ from examples.audit_store import (
 # --- Tag drift ---
 
 
-def test_tag_drift_similar_tags() -> None:
+def test_tag_drift_prefix_match() -> None:
     tags = [
-        {"tag": "infra", "count": 3},
-        {"tag": "infrastructure", "count": 8},
+        {"tag": "synology", "count": 7},
+        {"tag": "synology-mcp", "count": 2},
     ]
     findings = check_tag_drift(tags)
     assert len(findings) == 1
-    assert "infra" in findings[0].message
-    assert "infrastructure" in findings[0].message
+    assert "synology" in findings[0].message
 
 
 def test_tag_drift_plural() -> None:
@@ -37,21 +36,41 @@ def test_tag_drift_plural() -> None:
     assert len(findings) == 1
 
 
-def test_tag_drift_no_false_positive() -> None:
+def test_tag_drift_no_false_positive_edit_distance() -> None:
+    """Unrelated words that happen to be close in edit distance should not match."""
     tags = [
-        {"tag": "garmin", "count": 5},
-        {"tag": "github", "count": 3},
+        {"tag": "docker", "count": 6},
+        {"tag": "soccer", "count": 1},
     ]
     findings = check_tag_drift(tags)
     assert len(findings) == 0
 
 
-def test_tag_drift_short_tags_not_flagged() -> None:
+def test_tag_drift_no_false_positive_unrelated() -> None:
+    tags = [
+        {"tag": "garmin", "count": 5},
+        {"tag": "admin", "count": 1},
+    ]
+    findings = check_tag_drift(tags)
+    assert len(findings) == 0
+
+
+def test_tag_drift_hyphen_subtag_not_flagged() -> None:
+    """Intentional sub-tags like sleep/deep-sleep should not be flagged."""
+    tags = [
+        {"tag": "sleep", "count": 3},
+        {"tag": "deep-sleep", "count": 1},
+    ]
+    findings = check_tag_drift(tags)
+    assert len(findings) == 0
+
+
+def test_tag_drift_short_prefix_not_flagged() -> None:
     tags = [
         {"tag": "mcp", "count": 5},
         {"tag": "mcp-awareness", "count": 3},
     ]
-    # "mcp" is only 3 chars, substring check requires >= 4
+    # "mcp" is only 3 chars, prefix check requires >= 5
     findings = check_tag_drift(tags)
     assert len(findings) == 0
 
@@ -131,14 +150,26 @@ def test_low_quality_short_description() -> None:
 # --- Tag outliers ---
 
 
-def test_singleton_tags() -> None:
+def test_singleton_tags_summary() -> None:
     tags = [
         {"tag": "garmin", "count": 5},
         {"tag": "typo-tag", "count": 1},
+        {"tag": "another-single", "count": 1},
     ]
     findings = check_tag_outliers(tags)
     assert len(findings) == 1
+    assert "2 tags used only once" in findings[0].message
+    assert "another-single" in findings[0].message
     assert "typo-tag" in findings[0].message
+
+
+def test_singleton_tags_none() -> None:
+    tags = [
+        {"tag": "garmin", "count": 5},
+        {"tag": "health", "count": 3},
+    ]
+    findings = check_tag_outliers(tags)
+    assert len(findings) == 0
 
 
 # --- Report formatting ---

@@ -24,6 +24,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Default awareness URL updated to `http://localhost:8420` (matches mcp-awareness default port)
 - Added `mcp[cli]>=1.0.0` as a dependency
 
+### Fixed
+
+- Audit tag drift: replaced edit-distance matching with prefix matching to eliminate false positives (`docker`↔`soccer`, `admin`↔`garmin`, etc.)
+- Audit singleton tags: collapsed 173 individual findings into a single summary line
+
 ## [0.1.0] - 2026-03-21
 
 ### Added

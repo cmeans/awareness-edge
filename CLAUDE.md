@@ -37,7 +37,7 @@ src/awareness_edge/
 ├── cli.py               # Click CLI: run, check-config
 ├── core/
 │   ├── config.py        # Pydantic models, YAML + env var loader
-│   ├── client.py        # Awareness MCP client (report + read, transport stubbed)
+│   ├── client.py        # Awareness MCP client (report + read, StreamableHTTP transport)
 │   └── scheduler.py     # Async polling loop
 ├── evaluator/
 │   ├── base.py          # BaseEvaluator ABC
@@ -49,7 +49,11 @@ src/awareness_edge/
 └── sinks/
     ├── base.py          # BaseSink ABC + SinkResult
     ├── demo.py          # Logging no-op for testing
+    ├── github.py        # GitHub prompt sync sink
     └── __init__.py      # Sink registry
+
+examples/
+└── audit_store.py       # Data hygiene audit with GitHub issue reporting
 ```
 
 ## Build & Test
@@ -74,5 +78,5 @@ uv run awareness-edge --version  # verify CLI
 - Threshold evaluator for alerting (evaluator interface is pluggable for future extension)
 - Evaluator failures default to no-alert, log the failure
 - Per-provider and per-sink error isolation
-- Awareness client transport is stubbed (logs calls) — wire SSE/streamable-http when first real integration lands
+- Awareness client uses MCP SDK StreamableHTTPTransport — URL must include mount path if server uses `AWARENESS_MOUNT_PATH`
 - First planned sources: Synology NAS (get_resource_usage, get_system_info), Garmin health data
