@@ -304,7 +304,42 @@ def fingerprint(report_text: str) -> str:
 # --- GitHub issue management ---
 
 
-async def manage_github_issue(repo: str, report_text: str, has_findings: bool, token: str) -> None:
+def format_issue_body(report: AuditReport) -> str:
+    """Format a sanitized GitHub issue body — counts only, no private data."""
+    now = datetime.now(tz=UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
+    lines = [
+        "## Awareness Store Hygiene Report",
+        "",
+        f"Generated: {now}",
+        f"Store stats: {report.entry_count} entries across "
+        f"{report.source_count} sources, {report.tag_count} tags",
+        "",
+    ]
+
+    if not report.has_findings:
+        lines.append("No hygiene issues found.")
+        lines.append("")
+        return "\n".join(lines)
+
+    # Group by category — show counts only
+    categories: dict[str, int] = {}
+    for f in report.findings:
+        categories[f.category] = categories.get(f.category, 0) + 1
+
+    total = len(report.findings)
+    for category, count in sorted(categories.items()):
+        lines.append(f"- **{category}**: {count} issue{'s' if count != 1 else ''}")
+    lines.append("")
+    lines.append(
+        f"**{total} total issue{'s' if total != 1 else ''}** — "
+        "full details stored in awareness (tag: `hygiene-audit`)."
+    )
+    lines.append("")
+
+    return "\n".join(lines)
+
+
+async def manage_github_issue(repo: str, issue_body: str, has_findings: bool, token: str) -> None:
     """Create, update, or close the hygiene audit GitHub issue."""
     headers = {
         "Authorization": f"Bearer {token}",
@@ -324,8 +359,7 @@ async def manage_github_issue(repo: str, report_text: str, has_findings: bool, t
 
         if has_findings:
             if existing:
-                # Update existing issue
-                update: dict[str, object] = {"body": report_text}
+                update: dict[str, object] = {"body": issue_body}
                 if existing["state"] == "closed":
                     update["state"] = "open"
                 await http.patch(
@@ -334,19 +368,17 @@ async def manage_github_issue(repo: str, report_text: str, has_findings: bool, t
                 )
                 logger.info("Updated issue #%d", existing["number"])
             else:
-                # Create new issue
                 resp = await http.post(
                     f"{GITHUB_API}/repos/{repo}/issues",
                     json={
                         "title": ISSUE_TITLE,
-                        "body": report_text,
+                        "body": issue_body,
                         "labels": [ISSUE_LABEL],
                     },
                 )
                 resp.raise_for_status()
                 logger.info("Created issue #%d", resp.json()["number"])
         elif existing and existing["state"] == "open":
-            # Close issue — all clean
             await http.post(
                 f"{GITHUB_API}/repos/{repo}/issues/{existing['number']}/comments",
                 json={"body": "All clean — no hygiene issues found. Closing."},
@@ -359,6 +391,37 @@ async def manage_github_issue(repo: str, report_text: str, has_findings: bool, t
 
 
 # --- Main ---
+
+
+REPORT_TAGS = ["hygiene-audit", "awareness-edge", "data-quality", "actionable"]
+
+
+async def _store_report(client: AwarenessClient, report_text: str, fp: str) -> None:
+    """Store the full report in awareness, updating in place if one exists."""
+    description = f"Hygiene audit report (fingerprint: {fp})"
+
+    # Check if a report entry already exists
+    existing = await client.get_knowledge(tags=["hygiene-audit", "data-quality"])
+    for entry in existing:
+        data = entry.get("data", {})
+        if isinstance(data, dict) and "Hygiene audit report" in data.get("description", ""):
+            await client.update_entry(
+                entry_id=str(entry["id"]),
+                description=description,
+                content=report_text,
+            )
+            logger.info("Updated existing audit report in awareness")
+            return
+
+    # No existing report — create new
+    await client.remember(
+        source=FINGERPRINT_SOURCE,
+        tags=REPORT_TAGS,
+        description=description,
+        content=report_text,
+        learned_from="awareness-edge",
+    )
+    logger.info("Stored new audit report in awareness")
 
 
 async def run_audit(
@@ -393,7 +456,7 @@ async def run_audit(
         report_text = format_report(report)
         fp = fingerprint(report_text)
 
-        if dry_run or not repo:
+        if dry_run:
             click.echo(report_text)
             click.echo(f"Fingerprint: {fp}", err=True)
             return
@@ -403,16 +466,13 @@ async def run_audit(
         for entry in existing_fp:
             data = entry.get("data", {})
             if isinstance(data, dict) and data.get("description", "").endswith(fp):
-                logger.info("Fingerprint unchanged (%s), skipping GitHub update", fp)
+                logger.info("Fingerprint unchanged (%s), skipping", fp)
                 return
 
-        if not token:
-            click.echo("Error: GITHUB_TOKEN not set", err=True)
-            raise SystemExit(1)
+        # Store full report in awareness (private, cross-platform accessible)
+        await _store_report(client, report_text, fp)
 
-        await manage_github_issue(repo, report_text, report.has_findings, token)
-
-        # Store new fingerprint
+        # Store fingerprint to skip redundant runs
         await client.add_context(
             source=FINGERPRINT_SOURCE,
             tags=[FINGERPRINT_TAG],
@@ -420,6 +480,14 @@ async def run_audit(
             expires_days=7,
         )
         logger.info("Stored fingerprint: %s", fp)
+
+        # GitHub issue — sanitized summary only (no private data)
+        if repo:
+            if not token:
+                click.echo("Error: GITHUB_TOKEN not set", err=True)
+                raise SystemExit(1)
+            issue_body = format_issue_body(report)
+            await manage_github_issue(repo, issue_body, report.has_findings, token)
 
     finally:
         await client.close()

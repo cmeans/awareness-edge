@@ -207,6 +207,53 @@ class AwarenessClient:
             logger.exception("Failed to add context")
             return {}
 
+    async def remember(
+        self,
+        source: str,
+        tags: list[str],
+        description: str,
+        content: str | None = None,
+        learned_from: str = "awareness-edge",
+    ) -> dict[str, Any]:
+        """Store a general-purpose note in mcp-awareness."""
+        session = await self._ensure_session()
+        args: dict[str, Any] = {
+            "source": source,
+            "tags": tags,
+            "description": description,
+            "learned_from": learned_from,
+        }
+        if content is not None:
+            args["content"] = content
+        try:
+            result = await session.call_tool("remember", args)
+            data = self._extract_result(result)
+            return data if isinstance(data, dict) else {}
+        except Exception:
+            logger.exception("Failed to store note")
+            return {}
+
+    async def update_entry(
+        self,
+        entry_id: str,
+        description: str | None = None,
+        content: str | None = None,
+    ) -> dict[str, Any]:
+        """Update an existing entry in mcp-awareness."""
+        session = await self._ensure_session()
+        args: dict[str, Any] = {"entry_id": entry_id}
+        if description is not None:
+            args["description"] = description
+        if content is not None:
+            args["content"] = content
+        try:
+            result = await session.call_tool("update_entry", args)
+            data = self._extract_result(result)
+            return data if isinstance(data, dict) else {}
+        except Exception:
+            logger.exception("Failed to update entry")
+            return {}
+
     async def close(self) -> None:
         """Close the MCP session and transport."""
         if self._session is not None:
