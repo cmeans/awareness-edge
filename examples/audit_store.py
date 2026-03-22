@@ -338,7 +338,10 @@ async def run_audit(url: str, *, dry_run: bool) -> None:
         stats = await client.get_stats()
         tags = await client.get_tags()
         patterns = await client.get_knowledge(entry_type="pattern")
-        all_knowledge = await client.get_knowledge()
+        all_knowledge_raw = await client.get_knowledge()
+
+        # Exclude audit's own entries to avoid self-referential fingerprint drift
+        all_knowledge = [e for e in all_knowledge_raw if FINGERPRINT_TAG not in e.get("tags", [])]
 
         report = AuditReport(
             stats=stats,
@@ -363,23 +366,35 @@ async def run_audit(url: str, *, dry_run: bool) -> None:
             return
 
         # Check fingerprint — skip if unchanged
+        fp_description = f"Audit fingerprint: {fp}"
         existing_fp = await client.get_knowledge(tags=[FINGERPRINT_TAG])
+        fp_entry_id: str | None = None
         for entry in existing_fp:
             data = entry.get("data", {})
-            if isinstance(data, dict) and data.get("description", "").endswith(fp):
+            if not isinstance(data, dict):
+                continue
+            desc = data.get("description", "")
+            if "Audit fingerprint:" not in desc:
+                continue
+            if desc == fp_description:
                 logger.info("Fingerprint unchanged (%s), skipping", fp)
                 return
+            # Stale fingerprint — remember most recent one for update
+            fp_entry_id = str(entry["id"])
 
         # Store full report in awareness (private, cross-platform accessible)
         await _store_report(client, report_text, fp)
 
-        # Store fingerprint to skip redundant runs
-        await client.add_context(
-            source=FINGERPRINT_SOURCE,
-            tags=[FINGERPRINT_TAG],
-            description=f"Audit fingerprint: {fp}",
-            expires_days=7,
-        )
+        # Store/update fingerprint to skip redundant runs
+        if fp_entry_id:
+            await client.update_entry(entry_id=fp_entry_id, description=fp_description)
+        else:
+            await client.add_context(
+                source=FINGERPRINT_SOURCE,
+                tags=[FINGERPRINT_TAG],
+                description=fp_description,
+                expires_days=7,
+            )
         logger.info("Stored fingerprint: %s", fp)
 
     finally:
