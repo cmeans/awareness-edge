@@ -16,7 +16,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Awareness client read methods (`get_knowledge`, `get_status`) for sinks to query awareness
 - `--dry-run` flag on `run` command — sinks output what they would write to stderr without touching external systems
 - `check-config` now displays configured sinks
-- **Data hygiene audit script** (`examples/audit_store.py`) — audits awareness store for tag drift, mistyped patterns, source naming issues, low-quality entries, singleton tags. Reports to GitHub issue (single living issue, fingerprinted to skip redundant updates) or stdout via `--dry-run`
+- **Data hygiene audit script** (`examples/audit_store.py`) — audits awareness store for tag drift, mistyped patterns, source naming issues, low-quality entries, singleton tags. Stores full report in awareness (tagged `hygiene-audit`, `data-quality`, `actionable`) for later retrieval. Fingerprinted to skip redundant updates. `--dry-run` prints to stdout without storing.
 - Awareness client: `get_stats()`, `get_tags()`, `add_context()` methods; `get_knowledge()` gains `entry_type` filter
 
 ### Changed

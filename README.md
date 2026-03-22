@@ -72,7 +72,7 @@ flowchart TD
 
 | Tool | Description |
 |------|-------------|
-| [`examples/audit_store.py`](examples/audit_store.py) | Audits the awareness store for tag drift, mistyped patterns, source naming issues, and low-quality entries. Reports findings as a single GitHub issue (or `--dry-run` to stdout). Fingerprints results to skip redundant updates. |
+| [`examples/audit_store.py`](examples/audit_store.py) | Audits the awareness store for tag drift, mistyped patterns, source naming issues, and low-quality entries. Stores findings in awareness for later retrieval (`--dry-run` prints to stdout). Fingerprints results to skip redundant updates. |
 
 ## First source: Synology NAS
 

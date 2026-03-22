@@ -1,16 +1,16 @@
 #!/usr/bin/env python3
 """Audit the mcp-awareness store for data hygiene issues.
 
-Connects to mcp-awareness, runs quality checks, and optionally
-creates/updates a GitHub issue with findings. Uses a fingerprint
-stored in awareness to skip redundant GitHub updates.
+Connects to mcp-awareness, runs quality checks, and stores findings
+back in awareness for later retrieval and analysis. Uses a fingerprint
+to skip redundant updates when findings haven't changed.
 
 Usage:
-    # Dry-run (print report to stdout)
+    # Dry-run (print report to stdout, don't store)
     uv run python examples/audit_store.py --dry-run
 
-    # Create/update GitHub issue
-    GITHUB_TOKEN=... uv run python examples/audit_store.py --repo cmeans/mcp-awareness
+    # Store findings in awareness
+    uv run python examples/audit_store.py --url http://localhost:8420/secret
 """
 
 from __future__ import annotations
@@ -18,21 +18,16 @@ from __future__ import annotations
 import asyncio
 import hashlib
 import logging
-import os
 import sys
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 
 import click
-import httpx
 
 from awareness_edge.core.client import AwarenessClient
 
 logger = logging.getLogger(__name__)
 
-GITHUB_API = "https://api.github.com"
-ISSUE_LABEL = "hygiene-audit"
-ISSUE_TITLE = "Awareness store hygiene report"
 FINGERPRINT_TAG = "hygiene-audit"
 FINGERPRINT_SOURCE = "awareness-edge"
 
@@ -301,95 +296,6 @@ def fingerprint(report_text: str) -> str:
     return hashlib.sha256("\n".join(lines).encode()).hexdigest()[:16]
 
 
-# --- GitHub issue management ---
-
-
-def format_issue_body(report: AuditReport) -> str:
-    """Format a sanitized GitHub issue body — counts only, no private data."""
-    now = datetime.now(tz=UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
-    lines = [
-        "## Awareness Store Hygiene Report",
-        "",
-        f"Generated: {now}",
-        f"Store stats: {report.entry_count} entries across "
-        f"{report.source_count} sources, {report.tag_count} tags",
-        "",
-    ]
-
-    if not report.has_findings:
-        lines.append("No hygiene issues found.")
-        lines.append("")
-        return "\n".join(lines)
-
-    # Group by category — show counts only
-    categories: dict[str, int] = {}
-    for f in report.findings:
-        categories[f.category] = categories.get(f.category, 0) + 1
-
-    total = len(report.findings)
-    for category, count in sorted(categories.items()):
-        lines.append(f"- **{category}**: {count} issue{'s' if count != 1 else ''}")
-    lines.append("")
-    lines.append(
-        f"**{total} total issue{'s' if total != 1 else ''}** — "
-        "full details stored in awareness (tag: `hygiene-audit`)."
-    )
-    lines.append("")
-
-    return "\n".join(lines)
-
-
-async def manage_github_issue(repo: str, issue_body: str, has_findings: bool, token: str) -> None:
-    """Create, update, or close the hygiene audit GitHub issue."""
-    headers = {
-        "Authorization": f"Bearer {token}",
-        "Accept": "application/vnd.github+json",
-        "X-GitHub-Api-Version": "2022-11-28",
-    }
-
-    async with httpx.AsyncClient(headers=headers, timeout=30.0) as http:
-        # Find existing issue
-        resp = await http.get(
-            f"{GITHUB_API}/repos/{repo}/issues",
-            params={"labels": ISSUE_LABEL, "state": "all", "per_page": 1},
-        )
-        resp.raise_for_status()
-        issues = resp.json()
-        existing = issues[0] if issues else None
-
-        if has_findings:
-            if existing:
-                update: dict[str, object] = {"body": issue_body}
-                if existing["state"] == "closed":
-                    update["state"] = "open"
-                await http.patch(
-                    f"{GITHUB_API}/repos/{repo}/issues/{existing['number']}",
-                    json=update,
-                )
-                logger.info("Updated issue #%d", existing["number"])
-            else:
-                resp = await http.post(
-                    f"{GITHUB_API}/repos/{repo}/issues",
-                    json={
-                        "title": ISSUE_TITLE,
-                        "body": issue_body,
-                        "labels": [ISSUE_LABEL],
-                    },
-                )
-                resp.raise_for_status()
-                logger.info("Created issue #%d", resp.json()["number"])
-        elif existing and existing["state"] == "open":
-            await http.post(
-                f"{GITHUB_API}/repos/{repo}/issues/{existing['number']}/comments",
-                json={"body": "All clean — no hygiene issues found. Closing."},
-            )
-            await http.patch(
-                f"{GITHUB_API}/repos/{repo}/issues/{existing['number']}",
-                json={"state": "closed"},
-            )
-            logger.info("Closed issue #%d — all clean", existing["number"])
-
-
 # --- Main ---
 
 
@@ -424,12 +330,7 @@ async def _store_report(client: AwarenessClient, report_text: str, fp: str) -> N
     logger.info("Stored new audit report in awareness")
 
 
-async def run_audit(
-    url: str,
-    repo: str | None,
-    dry_run: bool,
-    token: str | None,
-) -> None:
+async def run_audit(url: str, *, dry_run: bool) -> None:
     """Run the full audit pipeline."""
     client = AwarenessClient(url=url, source=FINGERPRINT_SOURCE)
 
@@ -481,35 +382,21 @@ async def run_audit(
         )
         logger.info("Stored fingerprint: %s", fp)
 
-        # GitHub issue — sanitized summary only (no private data)
-        if repo:
-            if not token:
-                click.echo("Error: GITHUB_TOKEN not set", err=True)
-                raise SystemExit(1)
-            issue_body = format_issue_body(report)
-            await manage_github_issue(repo, issue_body, report.has_findings, token)
-
     finally:
         await client.close()
 
 
 @click.command()
 @click.option("--url", default="http://localhost:8420", help="Awareness server URL.")
-@click.option("--repo", default=None, help="GitHub repo for issue (owner/repo).")
-@click.option("--dry-run", is_flag=True, help="Print report to stdout, don't touch GitHub.")
-@click.option("--token-env", default="GITHUB_TOKEN", help="Env var for GitHub token.")
-def main(url: str, repo: str | None, dry_run: bool, token_env: str) -> None:
+@click.option("--dry-run", is_flag=True, help="Print report to stdout, don't store.")
+def main(url: str, *, dry_run: bool) -> None:
     """Audit the mcp-awareness store for data hygiene issues."""
     logging.basicConfig(
         level=logging.INFO,
         format="%(asctime)s %(levelname)-8s %(name)s — %(message)s",
         stream=sys.stderr,
     )
-    token = os.environ.get(token_env)
-    if repo and not token and not dry_run:
-        click.echo(f"Error: {token_env} not set", err=True)
-        raise SystemExit(1)
-    asyncio.run(run_audit(url, repo, dry_run, token))
+    asyncio.run(run_audit(url, dry_run=dry_run))
 
 
 if __name__ == "__main__":
