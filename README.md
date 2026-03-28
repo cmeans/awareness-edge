@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="docs/branding/awareness-logo-wordmark.svg" alt="awareness" width="400">
+</p>
+
 # awareness-edge
 
 > Collect. Evaluate. Report. The bridge between your systems and your AI assistant's awareness.
