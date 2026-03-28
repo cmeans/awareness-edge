@@ -96,4 +96,4 @@ AGPL-3.0-or-later — see [LICENSE](LICENSE) for details.
 
 ---
 
-Copyright (c) 2026 Chris Means
+*Part of the [Awareness](https://github.com/cmeans/mcp-awareness) ecosystem. Copyright (c) 2026 Chris Means.*
