@@ -8,6 +8,6 @@ the Free Software Foundation, either version 3 of the License, or
 
 License change notice
 ---------------------
-This project was originally released under the Apache License 2.0.
-It is now licensed under the GNU Affero General Public License v3
+All commits prior to this change were released under the Apache License 2.0.
+This project is now licensed under the GNU Affero General Public License v3
 (AGPL-3.0-or-later) to align with the mcp-awareness core project.
