@@ -43,7 +43,7 @@ import os
 from datetime import UTC, datetime
 
 from starlette.applications import Starlette
-from starlette.requests import Request
+from starlette.requests import Request  # noqa: TC002 — used at runtime in signatures
 from starlette.responses import JSONResponse
 from starlette.routing import Route
 
