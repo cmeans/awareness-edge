@@ -88,7 +88,7 @@ This project was designed and built collaboratively by [Chris Means](https://git
 
 ## License
 
-Apache 2.0 — see [LICENSE](LICENSE) for details.
+AGPL-3.0-or-later — see [LICENSE](LICENSE) for details.
 
 ---
 

@@ -1,3 +1,19 @@
+# awareness-edge — bridge between your systems and AI awareness
+# Copyright (C) 2026 Chris Means
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU Affero General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU Affero General Public License for more details.
+#
+# You should have received a copy of the GNU Affero General Public License
+# along with this program.  If not, see <https://www.gnu.org/licenses/>.
+
 """GPS receiver — accepts location updates from Tasker via HTTP POST.
 
 Writes each location update to mcp-awareness as an add_context entry.
@@ -21,11 +37,10 @@ Environment variables:
 
 from __future__ import annotations
 
-import asyncio
 import json
 import logging
 import os
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from starlette.applications import Starlette
 from starlette.requests import Request
@@ -66,7 +81,7 @@ async def handle_location(request: Request) -> JSONResponse:
     accuracy = body.get("accuracy")
     speed = body.get("speed")
     battery = body.get("battery")
-    timestamp = datetime.now(timezone.utc).isoformat()
+    timestamp = datetime.now(UTC).isoformat()
 
     parts = [f"lat={lat}, lon={lon}"]
     if accuracy is not None:

@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- **License changed from Apache 2.0 to AGPL v3** to align with mcp-awareness and protect against proprietary cloud hosting
+
 ### Added
 
 - Outbound sink framework — `BaseSink` ABC, separate registry, `sinks:` config section
