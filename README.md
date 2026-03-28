@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="docs/branding/awareness-logo-wordmark.svg" alt="awareness" width="400">
+</p>
+
 # awareness-edge
 
 > Collect. Evaluate. Report. The bridge between your systems and your AI assistant's awareness.
@@ -88,7 +92,7 @@ This project was designed and built collaboratively by [Chris Means](https://git
 
 ## License
 
-Apache 2.0 — see [LICENSE](LICENSE) for details.
+AGPL-3.0-or-later — see [LICENSE](LICENSE) for details.
 
 ---
 
